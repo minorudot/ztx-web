@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>ZTX Decrypt</title>
+    <script src="wasm_exec.js"></script>
+    <script>
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+            go.run(result.instance);
+        });
+
+        async function decryptFile(show = false) {
+            const fileInput = document.getElementById('fileInput');
+            const passwordInput = document.getElementById('password');
+            const status = document.getElementById('status');
+            const output = document.getElementById('output');
+
+            if (fileInput.files.length === 0) {
+                alert("Select a file");
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const password = passwordInput.value;
+            const buffer = await file.arrayBuffer();
+            const uint8Array = new Uint8Array(buffer);
+
+            status.innerText = "Decrypting...";
+            output.innerText = "";
+            
+            // Call Go function
+            const result = decryptData(uint8Array, password);
+
+            if (typeof result === 'string') {
+                status.innerText = "Error: " + result;
+            } else {
+                status.innerText = "Decrypted!";
+                
+                let originalName = file.name;
+                if (originalName.endsWith(".ztx")) {
+                    originalName = originalName.slice(0, -4);
+                } else {
+                    originalName = "decrypted_" + originalName;
+                }
+
+                if (show) {
+                    const isImage = /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(originalName);
+                    if (isImage) {
+                        const blob = new Blob([result]);
+                        const url = URL.createObjectURL(blob);
+                        output.innerHTML = `<img src="${url}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">`;
+                    } else {
+                        const decoder = new TextDecoder();
+                        output.innerText = decoder.decode(result);
+                    }
+                } else {
+                    const blob = new Blob([result], { type: "application/octet-stream" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = originalName;
+                    a.click();
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>ZTX Decrypt</h1>
+    <input type="file" id="fileInput"><br><br>
+    <input type="password" id="password" placeholder="Password"><br><br>
+    <button onclick="decryptFile(false)">Decrypt and download</button>
+    <button onclick="decryptFile(true)">Decrypt and show</button>
+    <p id="status"></p>
+    <pre id="output" style="white-space: pre-wrap; background: #f0f0f0; padding: 10px; min-height: 20px;"></pre>
+    <hr>
+    <a href="encrypt.html">Go to encryption</a>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>ZTX Encrypt</title>
+    <script src="wasm_exec.js"></script>
+    <script>
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+            go.run(result.instance);
+        });
+
+        async function encryptFile() {
+            const fileInput = document.getElementById('fileInput');
+            const passwordInput = document.getElementById('password');
+            const confirmPasswordInput = document.getElementById('confirmPassword');
+            const levelSelect = document.getElementById('level');
+            const status = document.getElementById('status');
+
+            if (fileInput.files.length === 0) {
+                alert("Select a file");
+                return;
+            }
+
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+
+            if (password !== confirmPassword) {
+                alert("Passwords do not match!");
+                return;
+            }
+
+            const level = parseInt(levelSelect.value);
+            const randomName = document.getElementById('randomName').checked;
+            const timestamp = document.getElementById('timestamp').checked;
+            const file = fileInput.files[0];
+            const buffer = await file.arrayBuffer();
+            const uint8Array = new Uint8Array(buffer);
+
+            status.innerText = "Encrypting (level " + level + ")...";
+            
+            // Call Go function
+            const result = encryptData(uint8Array, password, level);
+
+            if (typeof result === 'string') {
+                status.innerText = "Error: " + result;
+            } else {
+                status.innerText = "Encrypted!";
+                const blob = new Blob([result], { type: "application/octet-stream" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                
+                let outBaseName = file.name;
+                if (randomName) {
+                    outBaseName = getRandomName();
+                }
+                if (timestamp) {
+                    const ts = getTimestamp();
+                    if (randomName) {
+                        outBaseName = outBaseName + "_" + ts;
+                    } else {
+                        const lastDot = outBaseName.lastIndexOf('.');
+                        if (lastDot !== -1) {
+                            outBaseName = outBaseName.substring(0, lastDot) + "_" + ts + outBaseName.substring(lastDot);
+                        } else {
+                            outBaseName = outBaseName + "_" + ts;
+                        }
+                    }
+                }
+                a.download = outBaseName + ".ztx";
+                a.click();
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>ZTX Encrypt</h1>
+    <input type="file" id="fileInput"><br><br>
+    <input type="password" id="password" placeholder="Password"><br><br>
+    <input type="password" id="confirmPassword" placeholder="Confirm Password"><br><br>
+    <label for="level">Memory Level:</label>
+    <select id="level">
+        <option value="1">Level 1 (256MB)</option>
+        <option value="2" selected>Level 2 (512MB)</option>
+        <option value="3">Level 3 (1024MB)</option>
+        <option value="4">Level 4 (2048MB)</option>
+    </select><br><br>
+    <input type="checkbox" id="randomName"> <label for="randomName">Random Filename</label><br>
+    <input type="checkbox" id="timestamp"> <label for="timestamp">Add Timestamp</label><br><br>
+    <button onclick="encryptFile()">Encrypt</button>
+    <p id="status"></p>
+    <hr>
+    <a href="decrypt.html">Go to decryption</a>
+</body>
+</html>
