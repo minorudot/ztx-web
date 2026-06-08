@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>ZTX Download CLI</title>
+    <script src="wasm_exec.js"></script>
+    <script>
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+            go.run(result.instance);
+            document.getElementById('status').innerText = "Status: Ready to download";
+        }).catch(err => {
+            document.getElementById('status').innerText = "Error loading WASM: " + err;
+        });
+
+        function triggerDownload(fileName, dataGetter) {
+            if (typeof goReady === 'undefined') {
+                alert("WASM not ready yet!");
+                return;
+            }
+            try {
+                const version = getVersion();
+                let finalName = fileName;
+                const dotIndex = fileName.lastIndexOf('.');
+                if (dotIndex !== -1) {
+                    finalName = fileName.substring(0, dotIndex) + "_v" + version + fileName.substring(dotIndex);
+                } else {
+                    finalName = fileName + "_v" + version;
+                }
+
+                const data = dataGetter();
+                const blob = new Blob([data], { type: 'application/octet-stream' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = finalName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } catch (e) {
+                alert("Error during download: " + e);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Download ZTX CLI</h1>
+    <p id="status">Status: Loading WASM (approx. 15-20MB)...</p>
+    <ul>
+        <li><a href="#" class="btn" onclick="triggerDownload('ztx_windows.exe', downloadWindows64); return false;">Download Windows 64-bit (.exe)</a></li>
+        <li><a href="#" class="btn" onclick="triggerDownload('ztx_windows_arm64.exe', downloadWindowsArm64); return false;">Download Windows (arm64)</a></li>
+        <li><a href="#" class="btn" onclick="triggerDownload('ztx_linux', downloadLinux64); return false;">Download Linux 64-bit</a></li>
+        <li><a href="#" class="btn" onclick="triggerDownload('ztx_linux_arm64', downloadLinuxArm64); return false;">Download Linux (arm64)</a></li>
+        <li><a href="#" class="btn" onclick="triggerDownload('ztx_macos', downloadMac64); return false;">Download macOS 64-bit (Intel)</a></li>
+        <li><a href="#" class="btn" onclick="triggerDownload('ztx_macos_arm64', downloadMacArm64); return false;">Download macOS 64-bit (arm64)</a></li>
+    </ul>
+    <hr>
+    <a href="index.html">Back to Home</a>
+</body>
+</html>
