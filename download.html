@@ -4,14 +4,9 @@
     <meta charset="utf-8">
     <title>ZTX Download CLI</title>
     <script src="wasm_exec.js"></script>
+    <script src="wasm_init.js"></script>
     <script>
-        const go = new Go();
-        WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
-            go.run(result.instance);
-            document.getElementById('status').innerText = "Status: Ready to download";
-        }).catch(err => {
-            document.getElementById('status').innerText = "Error loading WASM: " + err;
-        });
+        initWasm('status', 'Status: Ready to download');
 
         function triggerDownload(fileName, dataGetter) {
             if (typeof goReady === 'undefined') {
@@ -22,10 +17,11 @@
                 const version = getVersion();
                 let finalName = fileName;
                 const dotIndex = fileName.lastIndexOf('.');
-                if (dotIndex !== -1) {
-                    finalName = fileName.substring(0, dotIndex) + "_v" + version + fileName.substring(dotIndex);
+
+                if (fileName.endsWith(".exe")) {
+                    finalName = fileName.substring(0, dotIndex) + "_v" + version + ".exe";
                 } else {
-                    finalName = fileName + "_v" + version;
+                    finalName = fileName + "_" + "v" + version;
                 }
 
                 const data = dataGetter();
